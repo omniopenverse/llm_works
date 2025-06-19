@@ -1,82 +1,99 @@
-# RAG Pipeline for PDF Question Answering
+# 🧠 LLM Works: Multi-Service AI App Environment
 
+This project provides a local containerized setup for working with LLMs (Large Language Models), embeddings, and notebooks using Docker Compose. It includes:
 
-## Overview
+- 🦙 **Ollama**: Model serving for LLMs
+- 📦 **App**: Main application interface
+- 🌐 **OpenWebUI**: Web-based interface for interacting with LLMs
+- 📓 **Jupyter**: Notebook environment for experiments
 
-This project implements a Retrieval-Augmented Generation (RAG) pipeline to enable question answering over PDF documents. The pipeline extracts text from PDFs, processes it into manageable chunks, generates embeddings, stores them in a vector database, and uses a Large Language Model (LLM) to generate accurate, context-aware responses based on user queries.
-
-
-
-## General Workflow
-
-- PDF Text Extraction: Extract raw text from uploaded PDF documents.
-
-- Text Splitting: Divide the extracted text into smaller chunks for efficient processing.
-
-- Embedding Generation: Convert text chunks into numerical vectors capturing semantic meaning.
-
-- Vector Store Creation: Index embeddings in a vector database for fast similarity search.
-
-- LLM Integration: Use a local LLM to generate responses based on retrieved relevant chunks.
-
-
-## Prerequisites
-
-- Python 3.8+: Ensure Python is installed.
-
--  If you want to use local LLM inference via Ollama. Download and install Ollama from [https://ollama.com/download](https://ollama.com/download). Ensure the ollama CLI is available (`which ollama`). Ollama must be running to use local models like `llama3.1:latest`, `llama3.2:3b`. For this session, pull these simple models. Do this 
+## 📁 Directory Structure
 
 ```
-ollama run llama3.1
-```
-Then, do this 
-
-```
-ollama run llama3.2
-```
-Also pull embedding models
-
-```
-ollama pull nomic-embed-text
+.
+├── app/               # Source for main application
+├── ollama/            # Ollama Dockerfile & setup
+├── openwebui/         # OpenWebUI Dockerfile & setup
+├── jupyter/           # Jupyter environment
+├── docker-compose.yml
+├── Makefile
+└── README.md
 ```
 
-Hardware: At least 8GB RAM; GPU recommended for faster LLM inference.
+## ⚙️ Prerequisites
 
+- Docker
+- Docker Compose v2
+- GNU Make
+- Set the required environment variable before running:
+  ```bash
+  export UNIVERSE_HOST=127.0.0.1  # Or your machine's IP
+  ```
 
+## 🚀 Getting Started
 
-## To run the App: Installation
+### 🏗️ Build and Run All Services
 
-- Clone the repository:
-```
-git clone <https://github.com/omniopenverse/lab_rag.git>
-cd lab_rag
-```
-- Install dependencies from the provided requirements.txt:
-
-```
-pip install -r requirements.txt
-```
-
-- Ensure ollama server is running
-```
-ollama serve
+```bash
+make service-all
 ```
 
-- Run the Streamlit application:
+This will:
+- Build and start `ollama`, `app`, and `jupyter` services
+- Pull required models inside the `ollama` container
 
+### 🔧 Individual Services
 
+```bash
+make service-ollama     # Start Ollama and pull models
+make service-app        # Start main app
+make service-jupyter    # Start JupyterLab
 ```
-streamlit run app.py
+
+## 📦 Model Management
+
+### Pull LLM and Embedding Models
+
+```bash
+make pull-llama3.2      # Pulls llama3.2:1b model
+make pull-embedings     # Pulls nomic-embed-text:v1.5 model
 ```
 
+## 🌍 Available Endpoints
 
-##  How it works
+| Service     | URL                                |
+|-------------|-------------------------------------|
+| App         | http://${UNIVERSE_HOST}:8501         |
+| Ollama API  | http://${UNIVERSE_HOST}:11434        |
+| OpenWebUI   | http://${UNIVERSE_HOST}:8080         |
+| Jupyter     | http://${UNIVERSE_HOST}:8888 (token: `token`) |
 
-The application reads the PDF and splits the text into smaller chunks that can be then fed into a LLM. It uses Ollama embeddings to create vector representations of the chunks. The application then finds the chunks that are semantically similar to the question that the user asked and feeds those chunks to the LLM to generate a response. The application uses Streamlit to create the GUI and Langchain to deal with the LLM.
+## 💾 Data Persistence
 
+- Ollama models stored in Docker volume: `ollama_data`
+- OpenWebUI data stored in volume: `dockerverse_openwebui_data`
+- Jupyter notebooks bind-mounted from `jupyter/src`
 
-## Contributing
+## 🔌 Networking
 
-This repository is for educational purposes only. Feel free to customize it to your needs.
+All services are on the shared `common` Docker bridge network for internal communication.
 
+## 🧹 Cleanup
 
+```bash
+docker compose down -v   # Stop containers and remove volumes
+```
+
+---
+
+## 🛠️ Notes
+
+- Make sure `UNIVERSE_HOST` is set properly, especially on non-Linux OS.
+- Adjust ports in `docker-compose.yml` as needed for your local setup.
+- Jupyter token is hardcoded as `token` for quick testing—change for production.
+
+---
+
+## 📜 License
+
+MIT License. Use at your own discretion.

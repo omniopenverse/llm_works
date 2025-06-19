@@ -1,0 +1,89 @@
+services:
+  app:
+    build:
+      context: app
+      dockerfile: Dockerfile
+    container_name: app
+    environment:
+      OLLAMA_BASE_URL: http://ollama:11434
+    hostname: app
+    image: llm_works/app:local
+    restart: unless-stopped
+    networks:
+      common: null
+    ports:
+      - "${UNIVERSE_HOST:?}:8501:8501/tcp"
+    depends_on:
+      - ollama
+
+  ollama:
+    build:
+      context: ollama
+      dockerfile: Dockerfile
+    container_name: ollama
+    environment:
+      OLLAMA_BASE_URL: ${UNIVERSE_HOST:?}:11434
+    hostname: ollama
+    image: llm_works/ollama:local
+    restart: unless-stopped
+    ports:
+      - "${UNIVERSE_HOST:?}:11434:11434/tcp"
+    networks:
+      common: null
+    volumes:
+      - type: volume
+        source: ollama_data
+        target: /root/.ollama
+        volume: {}
+
+  openwebui:
+    build:
+      context: openwebui
+      dockerfile: Dockerfile
+    container_name: openwebui
+    environment:
+      OLLAMA_BASE_URL: http://ollama:11434
+    hostname: openwebui
+    image: llm_works/openwebui:local
+    restart: unless-stopped
+    volumes:
+      - type: volume
+        source: openwebui_data
+        target: /app/backend/data
+        volume: {}
+    networks:
+      common: null
+    ports:
+      - "${UNIVERSE_HOST:?}:8080:8080/tcp"
+
+  jupyter:
+    build:
+      context: jupyter
+      dockerfile: Dockerfile
+    container_name: jupyter
+    environment:
+      JUPYTER_TOKEN: token
+    hostname: jupyter
+    image: llm_works/jupyter:local
+    ports:
+      - "${UNIVERSE_HOST:?}:8888:8888/tcp"
+    networks:
+      common: null
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: ./jupyter/src
+        target: /home/jovyan/work
+        bind:
+          create_host_path: false
+
+volumes:
+  ollama_data:
+    driver: local
+  openwebui_data:
+    name: dockerverse_openwebui_data
+    driver: local
+
+networks:
+  common:
+    driver: bridge
