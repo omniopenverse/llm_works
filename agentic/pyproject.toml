@@ -1,0 +1,11 @@
+[project]
+name = "agentic"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "dspy[mcp]>=2.6.27",
+    "mcp>=1.9.4",
+    "mlflow>=3.1.0",
+]
