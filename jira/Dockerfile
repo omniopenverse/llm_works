@@ -1,0 +1,1 @@
+FROM atlassian/jira-software:10.7.1

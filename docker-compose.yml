@@ -12,9 +12,105 @@ services:
     networks:
       common: null
     ports:
-      - "${UNIVERSE_HOST:?}:8501:8501/tcp"
+      - "${SERVER_HOST:?}:8501:8501/tcp"
     depends_on:
       - ollama
+
+  jira:
+    build:
+      context: jira
+      dockerfile: Dockerfile
+    container_name: jira
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # healthcheck:
+    #   test: ["CMD", "curl", "-f", "http://localhost:8080/status"]
+    #   interval: 30s
+    #   timeout: 10s
+    #   retries: 3
+    #   start_period: 40s
+    environment:
+      JIRA_BASE_URL: ${SERVER_HOST:?}:8080
+      JIRA_ADMIN_USER: admin
+      JIRA_ADMIN_PASSWORD: admin
+      ATL_JDBC_URL: jdbc:postgresql://postgres:5432/jiradb
+      ATL_JDBC_USER: jira
+      ATL_JDBC_PASSWORD: password
+      ATL_DB_TYPE: postgres72
+      JIRA_PERSONAL_TOKEN: mysupersecrettoken
+    hostname: jira
+    image: llm_works/jira:local
+    networks:
+      common: null
+    ports:
+      - "${SERVER_HOST:?}:8086:8080/tcp"
+    restart: unless-stopped
+    volumes:
+      - type: volume
+        source: jira_data
+        target: /var/atlassian/application-data/jira
+        volume: {}
+
+  jupyter:
+    build:
+      context: jupyter
+      dockerfile: Dockerfile
+    container_name: jupyter
+    environment:
+      JUPYTER_TOKEN: token
+    hostname: jupyter
+    image: llm_works/jupyter:local
+    networks:
+      common: null
+    ports:
+      - "${SERVER_HOST:?}:8888:8888/tcp"
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: ./jupyter/src
+        target: /home/jovyan/work
+        bind:
+          create_host_path: false
+
+  mcpatlassian:
+    build:
+      context: mcpatlassian
+      dockerfile: Dockerfile
+      args:
+        JIRA_URL: "${JIRA_URL:?}"
+        JIRA_PERSONAL_TOKEN: "${JIRA_PERSONAL_TOKEN:?}"
+    container_name: mcpatlassian
+    environment:
+      MCP_PORT: 8080
+      LOG_LEVEL: debug
+    hostname: mcpatlassian
+    image: llm_works/mcpatlassian:local
+    networks:
+      common: null
+    ports:
+      - "${SERVER_HOST:?}:8000:8000/tcp"
+    restart: unless-stopped
+
+  mcpinspector:
+    build:
+      context: mcpinspector
+      dockerfile: Dockerfile
+    container_name: mcpinspector
+    hostname: mcpinspector
+    image: llm_works/mcpinspector:local
+    networks:
+      common: null
+    ports:
+      - "${SERVER_HOST:?}:5173:5173/tcp"
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: /var/run/docker.sock
+        target: /var/run/docker.sock
+        read_only: true
+        bind:
+          create_host_path: false
 
   ollama:
     build:
@@ -22,12 +118,12 @@ services:
       dockerfile: Dockerfile
     container_name: ollama
     environment:
-      OLLAMA_BASE_URL: ${UNIVERSE_HOST:?}:11434
+      OLLAMA_BASE_URL: ${SERVER_HOST:?}:11434
     hostname: ollama
     image: llm_works/ollama:local
     restart: unless-stopped
     ports:
-      - "${UNIVERSE_HOST:?}:11434:11434/tcp"
+      - "${SERVER_HOST:?}:11434:11434/tcp"
     networks:
       common: null
     volumes:
@@ -54,36 +150,61 @@ services:
     networks:
       common: null
     ports:
-      - "${UNIVERSE_HOST:?}:8080:8080/tcp"
+      - "${SERVER_HOST:?}:8080:8080/tcp"
 
-  jupyter:
+  postgres:
     build:
-      context: jupyter
+      context: postgres
       dockerfile: Dockerfile
-    container_name: jupyter
+    container_name: postgres
     environment:
-      JUPYTER_TOKEN: token
-    hostname: jupyter
-    image: llm_works/jupyter:local
-    ports:
-      - "${UNIVERSE_HOST:?}:8888:8888/tcp"
+      PGDATA: /var/lib/postgresql/data/pgdata
+      POSTGRES_DB: postgresdb
+      POSTGRES_PASSWORD: password
+      POSTGRES_USER: postgres
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready --dbname postgres --username postgres
+      timeout: 10s
+      interval: 30s
+      retries: 5
+    hostname: postgres
+    image: llm_works/postgres:local
     networks:
       common: null
+    ports:
+      - "${SERVER_HOST:?}:5432:5432/tcp"
     restart: unless-stopped
+    shm_size: 128mb
     volumes:
-      - type: bind
-        source: ./jupyter/src
-        target: /home/jovyan/work
-        bind:
-          create_host_path: false
+      - type: volume
+        source: postgres_data
+        target: /var/lib/postgresql/data
+        volume: {}
+      - type: volume
+        source: postgres
+        target: /var/lib/postgresql
+        volume: {}
 
 volumes:
+  jira_data:
+    name: llm_works_jira_data
+    driver: local
   ollama_data:
+    name: llm_works_ollama_data
     driver: local
   openwebui_data:
-    name: dockerverse_openwebui_data
+    name: llm_works_openwebui_data
+    driver: local
+  postgres:
+    name: llm_works_postgres
+    driver: local
+  postgres_data:
+    name: llm_works_postgres_data
     driver: local
 
 networks:
   common:
+    name: llm_works_common
     driver: bridge

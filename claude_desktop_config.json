@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "mcp-atlassian": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-e", "JIRA_SSL_VERIFY",
+        "--network", "llm_works_common",
+        "llm_works/mcpatlassian:local"
+      ],
+      "env": {
+        "JIRA_SSL_VERIFY": "false"
+      }
+    }
+  }
+}

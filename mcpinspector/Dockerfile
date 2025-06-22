@@ -1,0 +1,1 @@
+FROM mcp/inspector:latest
